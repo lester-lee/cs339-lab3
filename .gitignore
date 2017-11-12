@@ -1,2 +1,7 @@
 clicks_merged/*
 impressions_merged/*
+*.class
+*~
+*.pem
+ubuntu*
+*.jar
