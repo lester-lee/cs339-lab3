@@ -9,4 +9,4 @@ Write the reduce functions
 Test them single-node (ask Jeannie for help?)   
 Move code to cluster & test there
 I don't think our output key/value pairs are completely correct, cause maybe both impression&click ones should have the same key? Right now they're different (look at FrequencyReducer). I started writing the FrequencyReduce key so you have an idea of how reduce works: it looks at one key, and has an iterator of all the values that the mapper outputted. Try figuring out what the correct pair to output for FrequencyReducer is so that the next Reducer will be able to reduce the pairs into our final <[Referrer,AdId], Clickrate> pairs that we want!
-OH BTW YOU WILL NEED TO DOWNLOAD THE CLICKS_MERGED and IMPRESSIONS_MERGED INTO YOUR FOLDERS!! cause they're like really big lol & I can't upload them to github   lmk if any of my code doesn't make sense
+OH BTW YOU WILL NEED TO DOWNLOAD THE CLICKS_MERGED and IMPRESSIONS_MERGED INTO YOUR FOLDERS!! AND ALSO DATAKEY.PEM cause they're like really big lol & I can't upload them to github   lmk if any of my code doesn't make sense
