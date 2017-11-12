@@ -72,39 +72,38 @@ public class ClickRate{
     }
 
     /*IMPORTANT: ImpressionID is a string of the format
-     * "IMPRESSIONID_REFERRER_ADID"*/
+     * adId,ImpressionId
+     */
     
     public static class TypeMapper
 	extends Mapper <Object, Text, Text, Text>{
 	/*
 	 * TypeMapper reads in both impressionlog & click log
-	 * For each JSON object: { text }
-	 * Find impression ID
-	 * Check if Impression (look for referrer) or click
-	 * Output <Impression ID, Click> or
-	 * Output <Impression ID, Impression> 
+	 * Output <[AdId,ImpressionId], click> or
+	 * Output <[AdId,ImpressionId], referrer>
 	 */
 	public void map(Object key, Text value, Context context)
 	    throws IOException, InterruptedException {
 	    //value is a line in the inputfiles specified above
-	    String jsonstring = value.toString(); // assume this is json
+	    String jsonstring = value.toString(); // assume this is json?
+	    // not sure if the above line actually is json tho
 	    JSONParser parser = new JSONParser();
 	    Text id = new Text();
 	    Text type = new Text();
 	    try{
+		// get relevant info from the JSON log entry
 		Object obj = parser.parse(jsonstring);
 		JSONObject json = (JSONObject) obj;
 		System.out.println(json);
 		String adID = (String) json.get("adId");
 		String impressionID = (String) json.get("impressionId");
 		String outKey = adID+","+impressionID;
+		String outValue = (json.containsKey("referrer")) ?
+		    (String) json.get("referrer") : "click";
+		//debugging:
+		System.out.println(outKey+":"+outValue);
 		id.set(outKey);
-		if (json.containsKey("referrer")){ // is this entry an impression?
-		    String referrer = (String) json.get("referrer");
-		    type.set(referrer);
-		}else{
-		    type.set("click");
-		}
+		type.set(outValue);
 		context.write(id, type);
 	    }catch(Exception e){
 		e.printStackTrace();
@@ -121,6 +120,20 @@ public class ClickRate{
 	  <ImpressionID_Click, total # of IDclicks>
 	  <ImpressionID_Impression, total # of IDimpressions>
 	*/
+	private IntWritable frequency = new IntWritable();
+	public void reduce(Text key, Iterable<Text> values, Context context)
+	    throws IOException, InterruptedException {
+	    int csum = 0; // click freq
+	    int isum = 0; // impression freq
+	    for (Text val : values){
+		if (val.equals("click")){
+		    csum++;
+		}else{
+		    isum++;
+		}
+	    }
+	    // THIS IS NOT FINISHED!!
+	}
     }
 
     public static class RateReducer
