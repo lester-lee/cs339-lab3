@@ -84,6 +84,7 @@ public class ClickRate{
 	 */
 	public void map(Object key, Text value, Context context)
 	    throws IOException, InterruptedException {
+	    //QUESTION: IS JSONSTRING ACTUALLY READING IN A JSON OBJECT FROM FILE?
 	    //value is a line in the inputfiles specified above
 	    String jsonstring = value.toString(); // assume this is json?
 	    // not sure if the above line actually is json tho
@@ -121,29 +122,34 @@ public class ClickRate{
 	  And outputs:
 	  <ImpressionID_Click, total # of IDclicks>
 	  <ImpressionID_Impression, total # of IDimpressions>
+	  QUESTION: WE SHOULD TRY TO COMBINE THESE SO THIS REDUCE GIVES OUT
+	  <Referrer_AdID, ???? what goes here ????>
 	*/
 	private IntWritable frequency = new IntWritable();
 	public void reduce(Text key, Iterable<Text> values, Context context)
 	    throws IOException, InterruptedException {
+	    // ASSUMING referrer is unique per impression_ad
 	    int csum = 0; // click freq
 	    int isum = 0; // impression freq
+	    String referrer = "";
 	    for (Text val : values){
-		if (val.equals("click")){
+		if (val.toString().equals("click")){
 		    csum++;
 		}else{
 		    isum++;
+		    referrer = val.toString();
+		    System.out.println(key.toString() + "," + referrer);
 		}
 	    }
-	    String clickKey = key.toString() + ",click";
-	    String referrerKey = key.toString() + ",impression";
+
+	    String newKey = referrer + "," + key.toString().split(",")[0];
+	    key.set(newKey);
 	    // referrerKey is incorrect! Need to pull from values during loop.
 	    // But is there only one referrer for each impressionID/adID pair?
 	    // Or can the same impressionID/adID have different referrers?
 	    frequency.set(csum);
-	    key.set(clickKey);
 	    context.write(key, frequency);
 	    frequency.set(isum);
-	    key.set(referrerKey);
 	    context.write(key, frequency);
 	    // THIS IS NOT FINISHED!!
 	    // We should be outputting pairs with the same key
@@ -160,6 +166,9 @@ public class ClickRate{
 	/*
 	  Takes in <ImpressionID_Click, freq> and 
 	  <ImpressionID_Impression, freq>
+	  MISTAKE: reduce only gets all the values for one specific key
+	  So we can't combine the results of two different keys
+
 	  and outputs
 	  <Referrer_AdID, clickfreq / impressionfreq>
 	*/
