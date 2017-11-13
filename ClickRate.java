@@ -99,7 +99,7 @@ public class ClickRate{
 		String impressionID = (String) json.get("impressionId");
 		String pageURL = (String) json.get("referrer");
 		String outKey = adID+","+impressionID;
-		//if impression, output is the referrer, else its "click"
+		//if impression, output is the referrer, else it's "click"
 		String outValue = (json.containsKey("referrer")) ?
 		    (String) json.get("referrer") : "click"; 
 		//debugging:
@@ -130,16 +130,28 @@ public class ClickRate{
 	    for (Text val : values){
 		if (val.equals("click")){
 		    csum++;
-		    //concatenates impressionID to value of click or impression 
-		    context.write(key+"_"+val, csum); //we think this should work?
 		}else{
 		    isum++;
-		    context.write(key+"_"+val, isum);
 		}
-		// uncomment for debugging
-		System.out.println("key: "+key+" val: "+val);
 	    }
+	    String clickKey = key.toString() + ",click";
+	    String referrerKey = key.toString() + ",impression";
+	    // referrerKey is incorrect! Need to pull from values during loop.
+	    // But is there only one referrer for each impressionID/adID pair?
+	    // Or can the same impressionID/adID have different referrers?
+	    frequency.set(csum);
+	    key.set(clickKey);
+	    context.write(key, frequency);
+	    frequency.set(isum);
+	    key.set(referrerKey);
+	    context.write(key, frequency);
 	    // THIS IS NOT FINISHED!!
+	    // We should be outputting pairs with the same key
+	    // Or figure out a way to get both the click freq & impression freq
+	    // into a pair with the key [referrer, adID] because that's what
+	    // RateReducer needs. rn I'm having trouble coming up with how to
+	    // pass both pieces of information into RateReducer.
+	    // 
 	}
     }
 
@@ -151,12 +163,10 @@ public class ClickRate{
 	  and outputs
 	  <Referrer_AdID, clickfreq / impressionfreq>
 	*/
-	public void reduce(Text key, Iterable<Text> values, Context context){
-	    throws IOException InterruptedException {
+	public void reduce(Text key, Iterable<Text> values, Context context)
+	    throws IOException, InterruptedException {
+	    
 		
-		
-	    }
 	}
-	
     }
 }
