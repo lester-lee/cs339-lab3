@@ -97,9 +97,11 @@ public class ClickRate{
 		System.out.println(json);
 		String adID = (String) json.get("adId");
 		String impressionID = (String) json.get("impressionId");
+		String pageURL = (String) json.get("referrer");
 		String outKey = adID+","+impressionID;
+		//if impression, output is the referrer, else its "click"
 		String outValue = (json.containsKey("referrer")) ?
-		    (String) json.get("referrer") : "click";
+		    (String) json.get("referrer") : "click"; 
 		//debugging:
 		System.out.println(outKey+":"+outValue);
 		id.set(outKey);
@@ -128,9 +130,14 @@ public class ClickRate{
 	    for (Text val : values){
 		if (val.equals("click")){
 		    csum++;
+		    //concatenates impressionID to value of click or impression 
+		    context.write(key+"_"+val, csum); //we think this should work?
 		}else{
 		    isum++;
+		    context.write(key+"_"+val, isum);
 		}
+		// uncomment for debugging
+		System.out.println("key: "+key+" val: "+val);
 	    }
 	    // THIS IS NOT FINISHED!!
 	}
@@ -144,5 +151,12 @@ public class ClickRate{
 	  and outputs
 	  <Referrer_AdID, clickfreq / impressionfreq>
 	*/
+	public void reduce(Text key, Iterable<Text> values, Context context){
+	    throws IOException InterruptedException {
+		
+		
+	    }
+	}
+	
     }
 }
