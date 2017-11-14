@@ -3,6 +3,7 @@ import java.io.IOException;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.Job;
@@ -53,16 +54,16 @@ public class ClickRate{
 
 	    job1.waitForCompletion(true);
 
-	    Job job2 = Job.getInstance(conf, "Phase2");
+	    /* Job job2 = Job.getInstance(conf, "Phase2");
 	    job2.setJarByClass(ClickRate.class);
 
 	    job2.setReducerClass(ClickRate.RateReducer.class);
-
+	    */
 	    // Pass in temp file and output to specified file
-	    FileInputFormat.addInputPath(job2, TEMP_OUTPUT_FILE);
-	    FileOutputFormat.setOutputPath(job2, new Path(args[2]));
+	    FileInputFormat.addInputPath(job1, TEMP_OUTPUT_FILE);
+	    FileOutputFormat.setOutputPath(job1, new Path(args[2]));
 
-	    System.exit(job2.waitForCompletion(true) ? 0 : 1);
+	    System.exit(job1.waitForCompletion(true) ? 0 : 1);
 	}catch (IOException e){
 	    System.err.println("Invalid file.");
 	    e.printStackTrace();
@@ -115,7 +116,7 @@ public class ClickRate{
     }
 
     public static class FrequencyReducer
-	extends Reducer <Text, Text, Text, IntWritable> {
+	extends Reducer <Text, Text, Text, DoubleWritable> {
 	/*
 	  Takes in a bunch of <Impression ID, Click/Impression>
 	  Amasses the frequencies for each Impression ID by incrementing
@@ -125,7 +126,7 @@ public class ClickRate{
 	  QUESTION: WE SHOULD TRY TO COMBINE THESE SO THIS REDUCE GIVES OUT
 	  <Referrer_AdID, ???? what goes here ????>
 	*/
-	private IntWritable frequency = new IntWritable();
+	//private Writable frequency = new IntWritable();
 	public void reduce(Text key, Iterable<Text> values, Context context)
 	    throws IOException, InterruptedException {
 	    // ASSUMING referrer is unique per impression_ad
@@ -144,13 +145,20 @@ public class ClickRate{
 
 	    String newKey = referrer + "," + key.toString().split(",")[0];
 	    key.set(newKey);
+	    double clickrate = (double)csum/isum;
+	    //frequency.set(clickrate);
+	    context.write(key, new DoubleWritable(clickrate));
 	    // referrerKey is incorrect! Need to pull from values during loop.
 	    // But is there only one referrer for each impressionID/adID pair?
 	    // Or can the same impressionID/adID have different referrers?
-	    frequency.set(csum);
+
+
+	    /*frequency.set(csum);
 	    context.write(key, frequency);
 	    frequency.set(isum);
-	    context.write(key, frequency);
+	    context.write(key, frequency);*/
+
+	    
 	    // THIS IS NOT FINISHED!!
 	    // We should be outputting pairs with the same key
 	    // Or figure out a way to get both the click freq & impression freq
@@ -161,7 +169,7 @@ public class ClickRate{
 	}
     }
 
-    public static class RateReducer
+    /* public static class RateReducer
 	extends Reducer <Text, IntWritable, Text, LongWritable>{
 	/*
 	  Takes in <ImpressionID_Click, freq> and 
@@ -172,10 +180,10 @@ public class ClickRate{
 	  and outputs
 	  <Referrer_AdID, clickfreq / impressionfreq>
 	*/
-	public void reduce(Text key, Iterable<Text> values, Context context)
+    /*public void reduce(Text key, Iterable<Text> values, Context context)
 	    throws IOException, InterruptedException {
 	    
 		
 	}
-    }
+    }*/
 }
