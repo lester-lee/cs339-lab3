@@ -126,7 +126,6 @@ public class ClickRate{
 	  QUESTION: WE SHOULD TRY TO COMBINE THESE SO THIS REDUCE GIVES OUT
 	  <Referrer_AdID, ???? what goes here ????>
 	*/
-	//private Writable frequency = new IntWritable();
 	public void reduce(Text key, Iterable<Text> values, Context context)
 	    throws IOException, InterruptedException {
 	    // ASSUMING referrer is unique per impression_ad
@@ -146,26 +145,7 @@ public class ClickRate{
 	    String newKey = referrer + "," + key.toString().split(",")[0];
 	    key.set(newKey);
 	    double clickrate = (double)csum/isum;
-	    //frequency.set(clickrate);
 	    context.write(key, new DoubleWritable(clickrate));
-	    // referrerKey is incorrect! Need to pull from values during loop.
-	    // But is there only one referrer for each impressionID/adID pair?
-	    // Or can the same impressionID/adID have different referrers?
-
-
-	    /*frequency.set(csum);
-	    context.write(key, frequency);
-	    frequency.set(isum);
-	    context.write(key, frequency);*/
-
-	    
-	    // THIS IS NOT FINISHED!!
-	    // We should be outputting pairs with the same key
-	    // Or figure out a way to get both the click freq & impression freq
-	    // into a pair with the key [referrer, adID] because that's what
-	    // RateReducer needs. rn I'm having trouble coming up with how to
-	    // pass both pieces of information into RateReducer.
-	    // 
 	}
     }
 
