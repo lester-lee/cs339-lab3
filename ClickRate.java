@@ -11,6 +11,10 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.json.simple.*;
 import org.json.simple.parser.*;
 
@@ -42,28 +46,44 @@ public class ClickRate{
 	    
 	    Job job1 = Job.getInstance(conf, "Phase1");
 	    job1.setJarByClass(ClickRate.class);
+
+	    job1.setOutputKeyClass(Text.class);
+	    job1.setOutputValueClass(Text.class);
 	    
 	    job1.setMapperClass(ClickRate.TypeMapper.class);
 	    job1.setReducerClass(ClickRate.FrequencyReducer.class);
-	    
+
+	    job1.setInputFormatClass(TextInputFormat.class);
 	    // Pass in impression/click files as input and
 	    // output to a temporary file
 	    FileInputFormat.addInputPath(job1, new Path(args[0]));
 	    FileInputFormat.addInputPath(job1, new Path(args[1]));
 	    FileOutputFormat.setOutputPath(job1, TEMP_OUTPUT_FILE);
-
+	    job1.setOutputFormatClass(SequenceFileOutputFormat.class);
+	    // FileOutputFormat.setOutputPath(job1, new Path(args[2]));
 	    job1.waitForCompletion(true);
-
-	    /* Job job2 = Job.getInstance(conf, "Phase2");
+	    
+	    Job job2 = Job.getInstance(conf, "Phase2");
 	    job2.setJarByClass(ClickRate.class);
 
 	    job2.setReducerClass(ClickRate.RateReducer.class);
-	    */
-	    // Pass in temp file and output to specified file
-	    FileInputFormat.addInputPath(job1, TEMP_OUTPUT_FILE);
-	    FileOutputFormat.setOutputPath(job1, new Path(args[2]));
+	    job2.setMapOutputValueClass(Text.class);
+	    job2.setOutputKeyClass(Text.class);
+	    job2.setOutputValueClass(DoubleWritable.class);
 
-	    System.exit(job1.waitForCompletion(true) ? 0 : 1);
+	    job2.setInputFormatClass(SequenceFileInputFormat.class);
+	    // Pass in impression/click files as input and
+	    // output to a temporary file
+	    FileInputFormat.addInputPath(job2, TEMP_OUTPUT_FILE);
+	    FileOutputFormat.setOutputPath(job2, new Path(args[2]));
+	    job2.setOutputFormatClass(TextOutputFormat.class);
+	    // Pass in temp file and output to specified file
+	    //FileInputFormat.addInputPath(job1, TEMP_OUTPUT_FILE);
+	    
+	    
+	  
+
+	    System.exit(job2.waitForCompletion(true) ? 0 : 1);
 	}catch (IOException e){
 	    System.err.println("Invalid file.");
 	    e.printStackTrace();
@@ -77,13 +97,13 @@ public class ClickRate{
      */
     
     public static class TypeMapper
-	extends Mapper <Object, Text, Text, Text>{
+	extends Mapper <LongWritable, Text, Text, Text>{
 	/*
 	 * TypeMapper reads in both impressionlog & click log
 	 * Output <[AdId,ImpressionId], click> or
 	 * Output <[AdId,ImpressionId], referrer>
 	 */
-	public void map(Object key, Text value, Context context)
+	public void map(LongWritable key, Text value, Context context)
 	    throws IOException, InterruptedException {
 	    //QUESTION: IS JSONSTRING ACTUALLY READING IN A JSON OBJECT FROM FILE?
 	    //value is a line in the inputfiles specified above
@@ -96,7 +116,7 @@ public class ClickRate{
 		// get relevant info from the JSON log entry
 		Object obj = parser.parse(jsonstring);
 		JSONObject json = (JSONObject) obj;
-		System.out.println(json);
+		//System.out.println(json);
 		String adID = (String) json.get("adId");
 		String impressionID = (String) json.get("impressionId");
 		String pageURL = (String) json.get("referrer");
@@ -105,7 +125,7 @@ public class ClickRate{
 		String outValue = (json.containsKey("referrer")) ?
 		    (String) json.get("referrer") : "click"; 
 		//debugging:
-		System.out.println(outKey+":"+outValue);
+		//System.out.println(outKey+":"+outValue);
 		id.set(outKey);
 		type.set(outValue);
 		context.write(id, type);
@@ -116,7 +136,7 @@ public class ClickRate{
     }
 
     public static class FrequencyReducer
-	extends Reducer <Text, Text, Text, DoubleWritable> {
+	extends Reducer <Text, Text, Text, Text> {
 	/*
 	  Takes in a bunch of <Impression ID, Click/Impression>
 	  Amasses the frequencies for each Impression ID by incrementing
@@ -138,19 +158,19 @@ public class ClickRate{
 		}else{
 		    isum++;
 		    referrer = val.toString();
-		    System.out.println(key.toString() + "," + referrer);
+		    //System.out.println(key.toString() + "," + referrer);
 		}
 	    }
 
 	    String newKey = referrer + "," + key.toString().split(",")[0];
 	    key.set(newKey);
-	    double clickrate = (double)csum/isum;
-	    context.write(key, new DoubleWritable(clickrate));
+	    //System.out.println(csum);
+	    context.write(key, new Text(Integer.valueOf(csum).toString()));
 	}
     }
 
-    /* public static class RateReducer
-	extends Reducer <Text, IntWritable, Text, LongWritable>{
+     public static class RateReducer
+	extends Reducer <Text, Text, Text, DoubleWritable>{
 	/*
 	  Takes in <ImpressionID_Click, freq> and 
 	  <ImpressionID_Impression, freq>
@@ -160,10 +180,24 @@ public class ClickRate{
 	  and outputs
 	  <Referrer_AdID, clickfreq / impressionfreq>
 	*/
-    /*public void reduce(Text key, Iterable<Text> values, Context context)
+    public void reduce(Text key, Iterable<Text> values, Context context)
 	    throws IOException, InterruptedException {
-	    
-		
+	int total = 0;
+	int clicks = 0;
+	for (Text value : values){
+	    total++;
+	    if(value.toString().equals("1")){
+		clicks++;
+	    }
 	}
-    }*/
+	System.out.println(clicks);
+	//System.out.println(total);
+	//	System.out.println("total = " + total + " clicks= " + clicks);
+	double clickrate = (double)clicks/total;
+	//System.out.println(clickrate);
+	context.write(key, new DoubleWritable(clickrate));
+	
+    }	
+	
+     }
 }
